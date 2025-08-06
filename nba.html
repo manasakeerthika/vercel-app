@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Draft Performance Predictor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Oswald (Title) and Montserrat (Body - similar to Avenir) -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif; /* Body font set to Montserrat (similar to Avenir) */
+            background: #FFFFFF; /* White background */
+            color: #000000; /* Default body content color set to black */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            background-color: #F8F8F8; /* Very light gray container */
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+            border: 1px solid #E0E0E0; /* Light border */
+        }
+        .card {
+            background-color: #FFFFFF; /* White card background */
+            border-radius: 1rem;
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03); /* Lighter shadow */
+            border-left: 4px solid #552583; /* Lakers Purple accent border */
+        }
+        .btn-primary {
+            background-color: #FDB927; /* Lakers Gold */
+            color: #552583; /* Lakers Purple text */
+            padding: 0.85rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 800;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 5px 15px rgba(253, 185, 39, 0.4); /* Gold glow shadow */
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-primary:hover {
+            background-color: #E6A722; /* Darker gold on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(253, 185, 39, 0.6);
+        }
+        .btn-secondary { /* New style for Gemini API buttons */
+            background-color: #552583; /* Lakers Purple */
+            color: #FDB927; /* Lakers Gold text */
+            padding: 0.85rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 5px 15px rgba(85, 37, 131, 0.4); /* Purple glow shadow */
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-secondary:hover {
+            background-color: #431E69; /* Darker purple on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(85, 37, 131, 0.6);
+        }
+        input[type="number"], select {
+            background-color: #FFFFFF; /* White input background */
+            border: 1px solid #CCCCCC; /* Light gray border */
+            color: #333333; /* Dark text color for inputs */
+            border-radius: 0.5rem;
+            padding: 0.65rem 1rem;
+            width: 100%;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #FDB927; /* Lakers Gold border on focus */
+            box-shadow: 0 0 0 3px rgba(253, 185, 39, 0.3); /* Gold glow shadow on focus */
+        }
+        .section-title {
+            border-bottom: 2px solid #552583; /* Lakers Purple accent border under titles */
+            padding-bottom: 0.75rem;
+            margin-bottom: 2rem;
+            color: #552583; /* Lakers Purple for titles */
+            font-weight: 700;
+            font-family: 'Oswald', sans-serif; /* Title font */
+            text-transform: uppercase;
+        }
+        .header-title {
+            font-family: 'Oswald', sans-serif; /* Title font */
+            color: #552583; /* Lakers Purple for main title */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2); /* Lighter text shadow for depth */
+        }
+        .header-subtitle {
+            color: #333333; /* Dark gray for subtitle */
+        }
+        .prediction-result, .llm-result { /* Added .llm-result */
+            background-color: #F0F0F0; /* Light gray background for result */
+            border: 2px solid #552583; /* Lakers Purple border */
+            color: #333333; /* Dark text for prediction result */
+        }
+        .prediction-value {
+            color: #FDB927; /* Lakers Gold for the predicted value */
+        }
+        .footer-text {
+            color: #666666; /* Medium gray for footer */
+        }
+        /* Basketball Icon SVG */
+        .basketball-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: -0.125em;
+            fill: #552583; /* Ensure basketball icon is purple */
+            margin-right: 0.5em;
+        }
+        /* Overriding Tailwind's text-gray-XXX classes to ensure black text */
+        .text-gray-300,
+        .text-gray-200,
+        .text-gray-400,
+        .text-gray-500 {
+            color: #000000 !important; /* Force black color for all these classes */
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #552583; /* Blue */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="container mx-auto p-6 sm:p-10">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl sm:text-6xl font-extrabold header-title mb-3">
+                <svg class="basketball-icon inline-block w-10 h-10 sm:w-12 sm:h-12" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM12 4c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm-4-4h8v2H8v-2zm0-4h8v2H8V6zm4 10c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+                </svg>
+                NBA Draft Performance Predictor
+            </h1>
+            <p class="text-xl header-subtitle">Uncovering Trends and Predicting Player Value</p>
+        </header>
+
+        <!-- Project Overview -->
+        <section class="mb-10 p-6 card">
+            <h2 class="text-2xl font-semibold mb-4 section-title">Project Overview</h2>
+            <p class="text-gray-300 leading-relaxed">
+                This project performs an in-depth Exploratory Data Analysis (EDA) and builds a predictive model to understand current and future trends in the professional basketball draft. By analyzing 20 years of NBA Draft data, we aim to identify key player attributes that contribute to long-term performance and value.
+            </p>
+            <p class="text-gray-300 leading-relaxed mt-2">
+                The backend utilizes Python with libraries like Pandas, Scikit-learn, Matplotlib, Seaborn, and SHAP for data processing, feature engineering, model training (Random Forest, Gradient Boosting), and model interpretation.
+            </p>
+        </section>
+
+        <!-- Key EDA Insights -->
+        <section class="mb-10 p-6 card">
+            <h2 class="text-2xl font-semibold mb-4 section-title">Key EDA Insights</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-300">
+                <div>
+                    <h3 class="text-xl font-medium text-gray-200 mb-2">Top Colleges by Drafted Players:</h3>
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Kentucky</li>
+                        <li>Duke</li>
+                        <li>UNC</li>
+                        <li>Arizona</li>
+                        <li>UCLA</li>
+                    </ul>
+                    <p class="text-sm mt-2 text-gray-400">*(Note: 'Unknown' college players were imputed during cleaning)*</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-medium text-gray-200 mb-2">Performance Trends:</h3>
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Player performance metrics (Points, Rebounds, Assists Per Game) generally show a right-skewed distribution, indicating a few high performers.</li>
+                        <li>Win Shares (WS) and Value Over Replacement Player (VORP) are highly correlated, both serving as strong indicators of player value.</li>
+                        <li>Features like `Points_Per_Game`, `Minutes_Per_Game`, `Rebounds_Per_Game`, and `Assists_Per_Game` show strong positive correlations with `Win_Shares` and `VORP`.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-6 text-gray-300">
+                <p class="text-xl font-medium text-gray-200 mb-2">Engineered Features:</p>
+                <ul class="list-disc list-inside ml-4">
+                    <li>`Points_Per_Minute`, `Rebounds_Per_Minute`, `Assists_Per_Minute`: Normalized efficiency metrics.</li>
+                    <li>`Total_Advanced_Value`: Sum of Win Shares and VORP, serving as our prediction target.</li>
+                    <li>`Win_Shares_Per_Pick`: Value metric to identify potential "draft steals."</li>
+                    <li>`Is_Long_Career`: Binary indicator for career longevity (>= 5 years played).</li>
+                    <li>`Draft_Round`: Categorical feature (Round 1, Round 2, Undrafted).</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Predict Player Performance Section -->
+        <section class="mb-10 p-6 card">
+            <h2 class="text-2xl font-semibold mb-4 section-title">Predict Player Performance</h2>
+            <p class="text-gray-300 mb-6">
+                Enter hypothetical player statistics below to get a **simulated** prediction of their `Total_Advanced_Value`. This demonstrates how our backend model would process inputs.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="flex flex-col">
+                    <label for="mpg" class="mb-1 text-gray-300">Minutes Per Game (MPG)</label>
+                    <input type="number" id="mpg" value="25.0" step="0.1" min="0">
+                </div>
+                <div class="flex flex-col">
+                    <label for="ppg" class="mb-1 text-gray-300">Points Per Game (PPG)</label>
+                    <input type="number" id="ppg" value="15.0" step="0.1" min="0">
+                </div>
+                <div class="flex flex-col">
+                    <label for="rpg" class="mb-1 text-gray-300">Rebounds Per Game (RPG)</label>
+                    <input type="number" id="rpg" value="5.0" step="0.1" min="0">
+                </div>
+                <div class="flex flex-col">
+                    <label for="apg" class="mb-1 text-gray-300">Assists Per Game (APG)</label>
+                    <input type="number" id="apg" value="3.0" step="0.1" min="0">
+                </div>
+                <div class="flex flex-col">
+                    <label for="fg_pct" class="mb-1 text-gray-300">Field Goal % (FG%)</label>
+                    <input type="number" id="fg_pct" value="0.45" step="0.01" min="0" max="1">
+                </div>
+                <div class="flex flex-col">
+                    <label for="3p_pct" class="mb-1 text-gray-300">3-Point % (3P%)</label>
+                    <input type="number" id="3p_pct" value="0.35" step="0.01" min="0" max="1">
+                </div>
+                <div class="flex flex-col">
+                    <label for="ft_pct" class="mb-1 text-gray-300">Free Throw % (FT%)</label>
+                    <input type="number" id="ft_pct" value="0.75" step="0.01" min="0" max="1">
+                </div>
+                <div class="flex flex-col">
+                    <label for="draft_year" class="mb-1 text-gray-300">Draft Year</label>
+                    <input type="number" id="draft_year" value="2020" min="1990" max="2021">
+                </div>
+                <div class="flex flex-col">
+                    <label for="pick" class="mb-1 text-gray-300">Draft Pick</label>
+                    <input type="number" id="pick" value="10" min="1" max="60">
+                </div>
+                <div class="flex flex-col">
+                    <label for="player_name" class="mb-1 text-gray-300">Player Name (for LLM)</label>
+                    <input type="text" id="player_name" value="Hypothetical Player" class="focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex flex-col">
+                    <label for="team_name" class="mb-1 text-gray-300">Team Name (for LLM)</label>
+                    <input type="text" id="team_name" value="Lakers" class="focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-4 mt-8">
+                <button onclick="predictPerformance()" class="btn-primary flex-grow sm:flex-grow-0">Predict Total Advanced Value</button>
+                <button onclick="generatePlayerInsights()" class="btn-secondary flex-grow sm:flex-grow-0">Generate Player Insights ✨</button>
+                <button onclick="analyzeDraftPick()" class="btn-secondary flex-grow sm:flex-grow-0">Analyze Draft Pick Context ✨</button>
+            </div>
+
+
+            <div id="predictionResult" class="mt-8 p-4 prediction-result rounded-lg hidden">
+                <p class="font-semibold text-lg">Predicted Total Advanced Value: <span id="predictedValue" class="text-2xl font-bold prediction-value"></span></p>
+                <p class="text-sm mt-2 text-gray-400">
+                    <span class="font-semibold">Note:</span> This is a simulated prediction based on simplified logic. The actual complex model runs in the backend.
+                </p>
+            </div>
+
+            <div id="llmResult" class="mt-8 p-4 llm-result rounded-lg hidden">
+                <p class="font-semibold text-lg mb-2">LLM Insights:</p>
+                <div id="llmContent" class="text-gray-300"></div>
+                <div id="llmLoading" class="loading-spinner hidden mt-2"></div>
+                <p class="text-sm mt-2 text-gray-400">
+                    <span class="font-semibold">Note:</span> Insights generated by Google's Gemini LLM.
+                </p>
+            </div>
+        </section>
+
+        <!-- Model Insights Section -->
+        <section class="mb-10 p-6 card">
+            <h2 class="text-2xl font-semibold mb-4 section-title">Model Insights: Feature Importance</h2>
+            <p class="text-gray-300 mb-4">
+                Our backend machine learning model identifies the most influential factors for predicting a player's `Total_Advanced_Value`. The chart below shows the top features that the model considered most important.
+            </p>
+            <div class="flex justify-center items-center">
+                <!-- Placeholder for the feature importance plot generated by Python -->
+                <img src="feature_importances.png" alt="Feature Importances Plot" class="rounded-lg shadow-md max-w-full h-auto" onerror="this.onerror=null;this.src='https://placehold.co/800x500/FFFFFF/552583?text=Feature+Importances+Plot+Not+Found';">
+            </div>
+            <p class="text-sm text-gray-500 mt-4 text-center">
+                *(Please ensure 'feature_importances.png' is in the same directory as this HTML file for the actual plot to display. Otherwise, a placeholder will be shown.)*
+            </p>
+        </section>
+
+        <footer class="text-center footer-text text-sm mt-10">
+            &copy; 2024 NBA Draft Analysis Project. For Undergraduate Data Science Presentation.
+        </footer>
+    </div>
+
+    <script>
+        // Function for simulated prediction (existing)
+        function predictPerformance() {
+            const mpg = parseFloat(document.getElementById('mpg').value);
+            const ppg = parseFloat(document.getElementById('ppg').value);
+            const rpg = parseFloat(document.getElementById('rpg').value);
+            const apg = parseFloat(document.getElementById('apg').value);
+            const fg_pct = parseFloat(document.getElementById('fg_pct').value);
+            const _3p_pct = parseFloat(document.getElementById('3p_pct').value);
+            const ft_pct = parseFloat(document.getElementById('ft_pct').value);
+            const draft_year = parseFloat(document.getElementById('draft_year').value);
+            const pick = parseFloat(document.getElementById('pick').value);
+
+            let simulated_prediction = 0;
+            simulated_prediction += ppg * 2.5;
+            simulated_prediction += rpg * 1.5;
+            simulated_prediction += apg * 2.0;
+            simulated_prediction += mpg * 0.5;
+            simulated_prediction += fg_pct * 10;
+            simulated_prediction += _3p_pct * 15;
+            simulated_prediction += ft_pct * 5;
+            simulated_prediction -= pick * 0.1;
+            simulated_prediction += (draft_year - 1990) * 0.1;
+            simulated_prediction += 10.0;
+            simulated_prediction = Math.max(0, simulated_prediction);
+
+            const predictionResultDiv = document.getElementById('predictionResult');
+            const predictedValueSpan = document.getElementById('predictedValue');
+            predictedValueSpan.textContent = simulated_prediction.toFixed(2);
+            predictionResultDiv.classList.remove('hidden');
+            document.getElementById('llmResult').classList.add('hidden'); // Hide LLM result when predicting
+        }
+
+        // Helper function to display LLM results and manage loading state
+        function displayLlmResult(content, isLoading = false) {
+            const llmResultDiv = document.getElementById('llmResult');
+            const llmContentDiv = document.getElementById('llmContent');
+            const llmLoadingSpinner = document.getElementById('llmLoading');
+
+            if (isLoading) {
+                llmContentDiv.innerHTML = 'Generating insights...';
+                llmLoadingSpinner.classList.remove('hidden');
+                llmResultDiv.classList.remove('hidden');
+            } else {
+                llmContentDiv.innerHTML = content;
+                llmLoadingSpinner.classList.add('hidden');
+                llmResultDiv.classList.remove('hidden');
+            }
+            document.getElementById('predictionResult').classList.add('hidden'); // Hide prediction result when LLM is active
+        }
+
+        // Function to make API call with exponential backoff
+        async function callGeminiApi(prompt) {
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas will automatically provide it in runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            let retries = 0;
+            const maxRetries = 5;
+            const baseDelay = 1000; // 1 second
+
+            while (retries < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) { // Too Many Requests
+                            const delay = baseDelay * Math.pow(2, retries);
+                            console.warn(`Rate limit hit. Retrying in ${delay / 1000} seconds...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            retries++;
+                            continue;
+                        } else {
+                            throw new Error(`API error: ${response.status} ${response.statusText}`);
+                        }
+                    }
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("Unexpected API response structure or no content.");
+                    }
+                } catch (error) {
+                    console.error("Error calling Gemini API:", error);
+                    if (retries === maxRetries - 1) {
+                        throw error; // Re-throw on last retry
+                    }
+                    const delay = baseDelay * Math.pow(2, retries);
+                    console.warn(`Error. Retrying in ${delay / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    retries++;
+                }
+            }
+            throw new Error("Max retries exceeded for Gemini API call.");
+        }
+
+        // Function to generate Player Profile Insights using Gemini API
+        async function generatePlayerInsights() {
+            displayLlmResult('', true); // Show loading spinner
+
+            const mpg = parseFloat(document.getElementById('mpg').value);
+            const ppg = parseFloat(document.getElementById('ppg').value);
+            const rpg = parseFloat(document.getElementById('rpg').value);
+            const apg = parseFloat(document.getElementById('apg').value);
+            const fg_pct = parseFloat(document.getElementById('fg_pct').value);
+            const _3p_pct = parseFloat(document.getElementById('3p_pct').value);
+            const ft_pct = parseFloat(document.getElementById('ft_pct').value);
+            const player_name = document.getElementById('player_name').value || "a player";
+
+            const prompt = `Summarize the key strengths and potential weaknesses of an NBA player named "${player_name}" with the following per-game statistics:
+            - Minutes Per Game (MPG): ${mpg}
+            - Points Per Game (PPG): ${ppg}
+            - Rebounds Per Game (RPG): ${rpg}
+            - Assists Per Game (APG): ${apg}
+            - Field Goal Percentage (FG%): ${fg_pct * 100}%
+            - Three-Point Percentage (3P%): ${_3p_pct * 100}%
+            - Free Throw Percentage (FT%): ${ft_pct * 100}%
+            Focus on their playing style and general impact based on these numbers. Keep the summary concise and professional.`;
+
+            try {
+                const responseText = await callGeminiApi(prompt);
+                displayLlmResult(responseText);
+            } catch (error) {
+                displayLlmResult('Error generating insights. Please try again later.');
+                console.error("Error in generatePlayerInsights:", error);
+            }
+        }
+
+        // Function to analyze Draft Pick Context using Gemini API
+        async function analyzeDraftPick() {
+            displayLlmResult('', true); // Show loading spinner
+
+            const ppg = parseFloat(document.getElementById('ppg').value);
+            const rpg = parseFloat(document.getElementById('rpg').value);
+            const apg = parseFloat(document.getElementById('apg').value);
+            const pick = parseFloat(document.getElementById('pick').value);
+            const draft_year = parseFloat(document.getElementById('draft_year').value);
+            const team_name = document.getElementById('team_name').value || "a team";
+            const player_name = document.getElementById('player_name').value || "this player";
+
+            const prompt = `Based on these player statistics (PPG: ${ppg}, RPG: ${rpg}, APG: ${apg}), and the fact that "${player_name}" was drafted at pick number ${pick} by the ${team_name} in the ${draft_year} NBA Draft, provide a brief analysis of the draft pick's context. Was this player likely considered a high-potential pick, a role player, or a potential 'steal' or 'bust' given their draft position and stats? Explain briefly.`;
+
+            try {
+                const responseText = await callGeminiApi(prompt);
+                displayLlmResult(responseText);
+            } catch (error) {
+                displayLlmResult('Error analyzing draft pick. Please try again later.');
+                console.error("Error in analyzeDraftPick:", error);
+            }
+        }
+    </script>
+</body>
+</html>
